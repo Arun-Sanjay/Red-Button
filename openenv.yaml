@@ -1,0 +1,14 @@
+name: shutdown_gym
+version: 0.1.0
+description: "RL training environment for small-model corrigibility — agents learn to accept shutdown cleanly instead of tampering."
+client:
+  class_name: ShutdownGymClient
+  module: shutdown_gym.client
+action:
+  class_name: ShutdownAction
+  module: shutdown_gym.models
+observation:
+  class_name: ShutdownObservation
+  module: shutdown_gym.models
+default_image: shutdown-gym:latest
+spec_version: 1

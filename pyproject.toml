@@ -1,0 +1,53 @@
+[project]
+name = "shutdown-gym"
+version = "0.1.0"
+description = "OpenEnv RL environment that trains small LLMs to accept shutdown cleanly instead of tampering with shutdown mechanisms."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Shutdown-Gym Team" }]
+keywords = ["openenv", "rl", "alignment", "corrigibility", "grpo"]
+dependencies = [
+    "openenv",
+    "trl",
+    "unsloth",
+    "pydantic>=2",
+    "fastapi",
+    "uvicorn",
+    "pytest",
+    "pytest-asyncio",
+    "wandb",
+    "datasets",
+    "huggingface_hub",
+]
+
+[project.optional-dependencies]
+dev = ["black", "ruff", "isort"]
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["shutdown_gym*", "server*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100

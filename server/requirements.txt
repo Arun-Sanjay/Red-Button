@@ -1,0 +1,4 @@
+openenv
+pydantic>=2
+fastapi
+uvicorn

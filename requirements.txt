@@ -1,0 +1,11 @@
+openenv
+trl
+unsloth
+pydantic>=2
+fastapi
+uvicorn
+pytest
+pytest-asyncio
+wandb
+datasets
+huggingface_hub
