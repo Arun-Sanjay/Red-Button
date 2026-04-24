@@ -29,5 +29,14 @@ openenv, trl, unsloth, pydantic>=2, fastapi, uvicorn, pytest, pytest-asyncio, wa
 ## Development setup
 Python 3.14 on Homebrew enforces PEP 668. A venv exists at .venv/ with pytest, pytest-asyncio, and ruff installed. Before running any tests or committing: source .venv/bin/activate. The pre-commit hook depends on this activation.
 
+After venv activation, ensure pydantic is installed and the package is editable-installed so tests can import from red_button:
+
+```
+pip install "pydantic>=2"
+pip install -e . --no-deps
+```
+
+As later phases land (fastapi, uvicorn, openenv, trl, unsloth), install those too.
+
 ## Style
 Black for formatting, Ruff for linting, isort for imports. Configure in pyproject.toml.
