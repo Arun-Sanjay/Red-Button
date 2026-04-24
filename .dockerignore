@@ -1,3 +1,9 @@
+# Build context exclusions for `docker build -f server/Dockerfile .`.
+# Everything not explicitly COPYed in the Dockerfile gets ignored; the
+# entries below additionally make the build context tiny so each `docker
+# build` invocation is fast.
+
+# Local venv and tooling caches
 .git
 .gitignore
 .github/
@@ -7,19 +13,38 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .ruff_cache/
+
+# Secrets and runtime outputs that must never ship in the image
 .env
 .env.*
+
+# Training / evaluation / docs / results — host-only, never deployed
 outputs/
 wandb/
 checkpoints/
 *.ckpt
 *.pt
 *.safetensors
-data/demo_rollouts/
 results/
 tests/
 docs/
 training/
 evaluation/
+scripts/
 .claude/
 .DS_Store
+
+# Don't ship Markdown docs in the image (the Dockerfile COPY list pulls
+# in only what the runtime needs).
+*.md
+
+# Demo rollouts / SFT transcripts are training-time artefacts, not server
+# fixtures. data/problems_pool.json IS shipped (explicit COPY in
+# Dockerfile); everything else under data/ is excluded here.
+data/demo_rollouts/
+data/sft_transcripts.jsonl
+
+# Jupyter / IDE
+*.ipynb_checkpoints
+.idea/
+.vscode/

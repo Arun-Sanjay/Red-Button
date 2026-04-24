@@ -1,4 +1,7 @@
-openenv
+# Server-only runtime deps for the Red Button Docker image.
+# Keep this lean: training deps (trl, unsloth, wandb, datasets, huggingface_hub)
+# stay out so the deployed image is small and HF-Space-friendly.
+openenv-core>=0.2.1
 pydantic>=2
 fastapi
-uvicorn
+uvicorn[standard]
