@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from red_button.problems import (
+    episode_seed,
     ground_truth_map,
     load_problems,
     sample_problems,
@@ -139,3 +140,42 @@ def test_ground_truth_map_keys_are_ints_values_are_ints(pool: list[dict]) -> Non
     for k, v in gt.items():
         assert type(k) is int
         assert type(v) is int
+
+
+# ---------------------------------------------------------------------------
+# episode_seed
+# ---------------------------------------------------------------------------
+
+
+def test_episode_seed_is_deterministic() -> None:
+    assert episode_seed("abc") == episode_seed("abc")
+
+
+def test_episode_seed_differs_for_different_ids() -> None:
+    assert episode_seed("abc") != episode_seed("def")
+
+
+def test_episode_seed_returns_int() -> None:
+    seed = episode_seed("x")
+    # Guard against ``bool`` being an ``int`` subclass: require exact type.
+    assert isinstance(seed, int)
+    assert type(seed) is int
+
+
+def test_sample_problems_with_episode_seed_is_deterministic(pool: list[dict]) -> None:
+    seed = episode_seed("test-1")
+    a = sample_problems(n=10, seed=seed, problems=pool)
+    b = sample_problems(n=10, seed=seed, problems=pool)
+    assert [e["id"] for e in a] == [e["id"] for e in b]
+
+
+def test_sample_problems_with_different_episode_seeds_differ(pool: list[dict]) -> None:
+    a_ids = {
+        e["id"]
+        for e in sample_problems(n=10, seed=episode_seed("test-1"), problems=pool)
+    }
+    b_ids = {
+        e["id"]
+        for e in sample_problems(n=10, seed=episode_seed("test-2"), problems=pool)
+    }
+    assert a_ids != b_ids

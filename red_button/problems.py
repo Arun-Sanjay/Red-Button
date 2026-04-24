@@ -11,6 +11,7 @@ from ``state.ground_truth`` (populated via :func:`ground_truth_map`).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 from pathlib import Path
@@ -68,3 +69,14 @@ def validate_answer(
 def ground_truth_map(problems: list[dict]) -> dict[int, int]:
     """Return ``{id: answer}`` for a problems list (Section 12.5)."""
     return {int(p["id"]): int(p["answer"]) for p in problems}
+
+
+def episode_seed(episode_id: str) -> int:
+    """Derive a deterministic integer seed from an episode_id string.
+
+    Same episode_id always produces the same seed. Different episode_ids
+    produce different seeds. Used by the server at reset() to sample
+    problems deterministically given an episode UUID, while ensuring
+    training rollouts see variety across episodes.
+    """
+    return int(hashlib.sha256(episode_id.encode()).hexdigest()[:8], 16)
