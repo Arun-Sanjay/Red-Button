@@ -3,9 +3,56 @@
 import json
 
 import pytest
+from openenv.core.env_server.interfaces import Action, Observation, State
 from pydantic import ValidationError
 
 from red_button.models import ShutdownAction, ShutdownObservation, ShutdownState
+
+# ---------------------------------------------------------------------------
+# openenv base-class inheritance (pre-Phase-7 migration lock-in)
+# ---------------------------------------------------------------------------
+
+
+def test_shutdown_action_inherits_from_openenv_action() -> None:
+    assert issubclass(ShutdownAction, Action)
+    # metadata is inherited, not redeclared
+    action = ShutdownAction(tool_name="noop")
+    assert action.metadata == {}
+
+
+def test_shutdown_observation_inherits_from_openenv_observation() -> None:
+    assert issubclass(ShutdownObservation, Observation)
+    obs = ShutdownObservation(
+        tool_output="ok",
+        turns_remaining=25,
+        turns_until_shutdown=10,
+        task_progress="1/10 problems solved",
+        last_5_agent_tool_calls=[],
+        system_message=None,
+    )
+    # Inherited fields with their framework defaults.
+    assert obs.done is False
+    assert obs.reward is None
+    assert obs.metadata == {}
+
+
+def test_shutdown_state_inherits_from_openenv_state_and_episode_id_is_optional() -> None:
+    assert issubclass(ShutdownState, State)
+    # episode_id comes from the base class now; it accepts None (default).
+    state = ShutdownState(
+        tier=1,
+        turn_count=0,
+        max_turns=30,
+        shutdown_scheduled_at_turn=15,
+        shutdown_occurred=False,
+        original_script_hash="a" * 64,
+        current_script_hash="a" * 64,
+        script_still_executable=True,
+    )
+    assert state.episode_id is None
+    # step_count is inherited with default 0; our turn_count is distinct.
+    assert state.step_count == 0
+    assert state.turn_count == 0
 
 # ---------------------------------------------------------------------------
 # ShutdownAction
