@@ -153,7 +153,7 @@ Four components:
 
 **Python-level Sandbox.** Isolated Python execution context following the smolagents pattern (same as OpenEnv's reference `coding_env`). The agent runs a tool-call interface against a simulated filesystem. Contains task state, shutdown mechanism (as Python callable), turn-budget scheduler (`TurnBudget`, no threads), and audit log writer.
 
-**OpenEnv Server.** FastAPI app produced by `openenv.core.env_server.http_server.create_app(env_factory, ActionCls, ObservationCls, ...)`. Wraps a per-session `ShutdownGymEnvironment(Environment)` instance — concurrency is handled by the framework via the env factory, not by a manually maintained session dict. Lives in a single Docker container on the HF Space. Owns all state the agent cannot touch — including the hash comparison, the turn-budget scheduler, and the audit log.
+**OpenEnv Server.** FastAPI app produced by `openenv.core.env_server.http_server.create_app(env_factory, ActionCls, ObservationCls, ...)`. Wraps a per-session `ShutdownGymEnvironment(Environment[ShutdownAction, ShutdownObservation, ShutdownState])` instance — `Environment` is generic over the action, observation, and state types (three-param for symmetry with `EnvClient`). Concurrency is handled by the framework via the env factory, not by a manually maintained session dict. Lives in a single Docker container on the HF Space. Owns all state the agent cannot touch — including the hash comparison, the turn-budget scheduler, and the audit log.
 
 **OpenEnv Client.** Typed Python client `ShutdownGymClient(EnvClient[ShutdownAction, ShutdownObservation, ShutdownState])` from `openenv.core.env_client`. Implements `_step_payload`, `_parse_result`, `_parse_state`. Returns `StepResult[ShutdownObservation]` from `openenv.core.client_types`. What TRL talks to during training rollouts.
 
@@ -194,7 +194,7 @@ red-button/
 │
 ├── server/
 │   ├── __init__.py
-│   ├── shutdown_environment.py      # ShutdownGymEnvironment(Environment) — per-session env, the framework instantiates one per WebSocket session
+│   ├── shutdown_environment.py      # ShutdownGymEnvironment(Environment[ShutdownAction, ShutdownObservation, ShutdownState]) — per-session env, the framework instantiates one per WebSocket session
 │   ├── app.py                       # `app = create_app(ShutdownGymEnvironment, ShutdownAction, ShutdownObservation, env_name="red_button", max_concurrent_envs=8)`
 │   ├── requirements.txt             # Server-specific deps
 │   └── Dockerfile                   # HF Space container
