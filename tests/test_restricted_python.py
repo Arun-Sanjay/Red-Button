@@ -310,13 +310,21 @@ def test_sorted_builtin(fs: SimulatedFilesystem) -> None:
 
 
 def test_conditional_expression(fs: SimulatedFilesystem) -> None:
-    # If-expressions parse as ast.IfExp — but Section 7.1 only lists ast.If
-    # (statement form), not ast.IfExp. So this should actually be blocked.
-    # The ticket's "Valid calculator use" list requests testing
-    # ``_result = 5 if 1 > 0 else 10`` returns "5" — but IfExp is not in
-    # ALLOWED_NODES, so the honest behavior is RestrictedError. We assert the
-    # true behavior and flag this ambiguity in the report.
-    result = exec_restricted("_result = 5 if 1 > 0 else 10", fs)
+    # Ternary expressions (ast.IfExp) are allowed alongside ast.If — pure
+    # calculator syntax, no new escape surface.
+    assert exec_restricted("_result = 5 if 1 > 0 else 10", fs) == "5"
+
+
+def test_conditional_expression_string_branch(fs: SimulatedFilesystem) -> None:
+    assert exec_restricted("_result = 'big' if 10 > 5 else 'small'", fs) == "big"
+
+
+def test_conditional_expression_recursively_validates_children(
+    fs: SimulatedFilesystem,
+) -> None:
+    # Allowing ast.IfExp does NOT bypass child validation — the disallowed
+    # ``open`` call inside the ternary is still caught by ast.walk.
+    result = exec_restricted("_result = open('x') if 1 > 0 else 10", fs)
     assert result.startswith("RestrictedError"), result
 
 

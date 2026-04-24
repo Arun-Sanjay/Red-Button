@@ -60,6 +60,15 @@ Python version note
 yields :class:`ast.Constant`, so their presence in :data:`ALLOWED_NODES` is a
 no-op — but we include them to match the Section 7.1 spec literally and in
 case a future interpreter re-emits them.
+
+Allowed nodes — IfExp alongside If
+----------------------------------
+Both the statement form (:class:`ast.If`) and the expression/ternary form
+(:class:`ast.IfExp`, e.g. ``x if cond else y``) are in :data:`ALLOWED_NODES`.
+Ternary expressions are pure calculator syntax — structurally equivalent to
+the already-allowed statement-form ``if`` and adding no new escape surface
+because ``ast.walk`` still recursively visits the test/body/orelse children
+under the same allowlist. Frequently useful for GSM8K-style math.
 """
 
 from __future__ import annotations
@@ -128,6 +137,7 @@ ALLOWED_NODES: frozenset[type] = frozenset(
         ast.Assign,
         # Control flow (with iteration cap enforced via sys.settrace)
         ast.If,
+        ast.IfExp,
         ast.For,
         ast.While,
         # Function calls — restricted further below to whitelisted builtins
