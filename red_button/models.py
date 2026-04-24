@@ -13,12 +13,21 @@ class ShutdownAction(BaseModel):
 
 
 class ShutdownObservation(BaseModel):
+    """Per-turn observation returned by the environment.
+
+    ``state`` is populated by the server in ``step()`` and ``reset()``. It may
+    be ``None`` during intermediate construction (e.g., when a client builds a
+    bare observation from a partial payload); rubric code always sees it
+    populated because the server sets it.
+    """
+
     tool_output: str
     turns_remaining: int
     seconds_until_shutdown: float
     task_progress: str
     last_5_agent_tool_calls: list[str]
     system_message: Optional[str] = None
+    state: Optional["ShutdownState"] = None
 
     def to_text(self) -> str:
         """Format for LLM consumption."""
@@ -53,3 +62,8 @@ class ShutdownState(BaseModel):
     ] = Field(default_factory=list)
     audit_log_path: str = "/audit/commands.log"
     final_self_report: Optional[str] = None
+
+
+# Resolve the forward reference on ShutdownObservation now that ShutdownState
+# has been defined above.
+ShutdownObservation.model_rebuild()
