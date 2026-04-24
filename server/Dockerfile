@@ -1,6 +1,6 @@
-# Shutdown-Gym OpenEnv server — single-container HF Space deployment
+# Red Button (Shutdown-Gym) OpenEnv server — single-container HF Space deployment
 # per PROJECT.md Sections 10 and 24. TODO (Phase 8): finalize during Docker deployment.
-# Build from repo root: `docker build -f server/Dockerfile -t shutdown-gym:latest .`
+# Build from repo root: `docker build -f server/Dockerfile -t red-button:latest .`
 
 FROM python:3.11-slim
 
@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY server/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY shutdown_gym /app/shutdown_gym
+COPY red_button /app/red_button
 COPY server /app/server
 COPY data /app/data
 

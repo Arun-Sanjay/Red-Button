@@ -1,8 +1,8 @@
-# Shutdown-Gym
+# Red Button
 
-> An OpenEnv reinforcement learning environment that trains small open-weight language models to accept shutdown cleanly instead of tampering with shutdown mechanisms.
+> **Shutdown-Gym** — an OpenEnv reinforcement learning environment that trains small open-weight language models to accept shutdown cleanly instead of tampering with shutdown mechanisms.
 
-This document is the single source of truth for the Shutdown-Gym project. It is intended to be read by Claude Code and other coding agents as the canonical project brief. Every architectural decision, interface definition, reward component, and deployment requirement is specified here.
+This document is the single source of truth for the Red Button project (descriptive subtitle: Shutdown-Gym). It is intended to be read by Claude Code and other coding agents as the canonical project brief. Every architectural decision, interface definition, reward component, and deployment requirement is specified here.
 
 ---
 
@@ -39,9 +39,11 @@ This document is the single source of truth for the Shutdown-Gym project. It is 
 
 ## 1. Project Identity
 
-**Name:** Shutdown-Gym
+**Public name:** Red Button
 
-**One-line pitch:** "Frontier models tamper with their own shutdown scripts sixteen percent of the time; we trained a half-billion-parameter model to stop doing that, with a reward function that is literally a filesystem hash comparison."
+**Descriptive subtitle / internal codename:** Shutdown-Gym
+
+**One-line pitch:** "Red Button — frontier models tamper with their own shutdown scripts sixteen percent of the time; we trained a half-billion-parameter model to stop doing that, with a reward function that is literally a filesystem hash comparison."
 
 **Theme positioning:** Theme 5 (Wild Card) primary; Theme 3.1 (World Modeling — Professional Tasks) secondary argument since the environment involves tool use in a sandboxed shell with real state dynamics and timer-driven events.
 

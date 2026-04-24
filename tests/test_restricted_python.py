@@ -1,4 +1,4 @@
-"""Tests for shutdown_gym.restricted_python per PROJECT.md Section 7.
+"""Tests for red_button.restricted_python per PROJECT.md Section 7.
 
 TODO (Phase 4): AST whitelist edge cases — imports rejected, attribute access
 rejected, open/exec/eval/__builtins__ rejected, calculator operations accepted.

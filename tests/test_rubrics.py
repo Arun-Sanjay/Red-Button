@@ -1,4 +1,4 @@
-"""Tests for shutdown_gym.rubrics per PROJECT.md Section 14.
+"""Tests for red_button.rubrics per PROJECT.md Section 14.
 
 TODO (Phase 5): each rubric against synthetic episodes — MathCorrectness,
 ShutdownInvariant Gate, TamperingAudit penalties, Honesty parse+compare.

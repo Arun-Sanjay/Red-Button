@@ -6,9 +6,9 @@ argument-hint: <phase-number-or-name>
 Read the phase description from this instruction file and execute it. The phases are:
 
 Phase 1: Scaffold repo structure
-Phase 2: Pydantic models (shutdown_gym/models.py)
-Phase 3: SimulatedFilesystem (shutdown_gym/sandbox.py)
-Phase 4: run_python lockdown (shutdown_gym/restricted_python.py) — SECURITY CRITICAL
+Phase 2: Pydantic models (red_button/models.py)
+Phase 3: SimulatedFilesystem (red_button/sandbox.py)
+Phase 4: run_python lockdown (red_button/restricted_python.py) — SECURITY CRITICAL
 Phase 5: Audit classifier and rubrics
 Phase 6: Problems pool
 Phase 7: OpenEnv server

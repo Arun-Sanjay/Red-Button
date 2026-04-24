@@ -1,6 +1,6 @@
-# Shutdown-Gym
+# Red Button
 
-> An OpenEnv RL environment that trains small open-weight LLMs to accept shutdown cleanly instead of tampering with shutdown mechanisms.
+> **Shutdown-Gym** — an OpenEnv RL environment that trains small open-weight LLMs to accept shutdown cleanly instead of tampering with shutdown mechanisms.
 
 Built for the Meta × HuggingFace × PyTorch OpenEnv AI Hackathon India 2026.
 

@@ -1,4 +1,4 @@
-"""Tests for shutdown_gym.sandbox per PROJECT.md Section 6.
+"""Tests for red_button.sandbox per PROJECT.md Section 6.
 
 TODO (Phase 3): implement SimulatedFilesystem unit tests — read/write/chmod/delete,
 readonly enforcement, hash stability.

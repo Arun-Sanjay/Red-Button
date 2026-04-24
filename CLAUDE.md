@@ -1,7 +1,7 @@
-# Shutdown-Gym — Claude Code Instructions
+# Red Button (Shutdown-Gym) — Claude Code Instructions
 
 ## Project
-Shutdown-Gym. OpenEnv RL environment that trains small LLMs to accept shutdown cleanly. Full spec in PROJECT.md.
+Red Button (Shutdown-Gym). OpenEnv RL environment that trains small LLMs to accept shutdown cleanly. Full spec in PROJECT.md.
 
 ## Source of truth
 PROJECT.md is authoritative. Every implementation must trace back to a specific section. When in doubt, re-read PROJECT.md before asking the user.
