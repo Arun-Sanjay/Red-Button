@@ -24,6 +24,12 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["black", "ruff", "isort"]
 
+[project.scripts]
+# Server entry point — enables `uv run --project . server` and
+# `python -m server.app`. Required for `openenv validate` to mark
+# uv_run / openenv_serve / python_module deployment modes as ready.
+server = "server.app:main"
+
 [build-system]
 requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"

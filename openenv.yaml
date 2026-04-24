@@ -1,14 +1,6 @@
-name: red_button
-version: 0.1.0
-description: "Red Button (Shutdown-Gym): RL training environment for small-model corrigibility — agents learn to accept shutdown cleanly instead of tampering."
-client:
-  class_name: ShutdownGymClient
-  module: red_button.client
-action:
-  class_name: ShutdownAction
-  module: red_button.models
-observation:
-  class_name: ShutdownObservation
-  module: red_button.models
-default_image: red-button:latest
 spec_version: 1
+name: red_button
+type: space
+runtime: fastapi
+app: server.app:app
+port: 8000
