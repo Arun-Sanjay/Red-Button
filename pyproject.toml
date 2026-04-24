@@ -8,7 +8,7 @@ license = { text = "MIT" }
 authors = [{ name = "Red Button Team" }]
 keywords = ["openenv", "rl", "alignment", "corrigibility", "grpo"]
 dependencies = [
-    "openenv",
+    "openenv-core>=0.2.1",
     "trl",
     "unsloth",
     "pydantic>=2",
