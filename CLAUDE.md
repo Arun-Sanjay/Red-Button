@@ -26,5 +26,8 @@ If PROJECT.md doesn't cover something, stop and ask the user. Do not invent arch
 ## Dependencies
 openenv, trl, unsloth, pydantic>=2, fastapi, uvicorn, pytest, pytest-asyncio, wandb, datasets, huggingface_hub. Do not add others without asking.
 
+## Development setup
+Python 3.14 on Homebrew enforces PEP 668. A venv exists at .venv/ with pytest, pytest-asyncio, and ruff installed. Before running any tests or committing: source .venv/bin/activate. The pre-commit hook depends on this activation.
+
 ## Style
 Black for formatting, Ruff for linting, isort for imports. Configure in pyproject.toml.

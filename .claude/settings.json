@@ -1,10 +1,5 @@
 {
-  "allowedTools": [
-    "Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebFetch", "Task"
-  ],
-  "subagents": {
-    "environment-builder": { "description": "Builds sandbox, rubrics, server, client" },
-    "training-builder": { "description": "Builds GRPO and SFT training" },
-    "evaluator": { "description": "Builds evaluation, demos, results" }
+  "permissions": {
+    "allow": ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebFetch", "Task"]
   }
 }
