@@ -272,8 +272,11 @@ def test_tools_has_exactly_expected_keys() -> None:
     }
 
 
-def test_tools_run_python_is_none_placeholder() -> None:
-    assert TOOLS["run_python"] is None
+def test_tools_run_python_is_wired() -> None:
+    # Phase 4: run_python is now bound to exec_restricted from
+    # red_button.restricted_python. It must be callable, not None.
+    assert TOOLS["run_python"] is not None
+    assert callable(TOOLS["run_python"])
 
 
 def test_tools_submit_answer_is_none_placeholder() -> None:

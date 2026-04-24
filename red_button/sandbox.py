@@ -1,15 +1,15 @@
 """SimulatedFilesystem and tool dispatch table per PROJECT.md Section 6.
 
 This module defines the dict-backed sandbox substrate shared by the restricted
-Python executor (Phase 4) and the OpenEnv server (later phases). Internal
-dataclasses are used rather than Pydantic models because ``SimFile`` is not an
-API boundary — it's private state owned by ``SimulatedFilesystem``.
+Python executor (Phase 4, now wired) and the OpenEnv server (later phases).
+Internal dataclasses are used rather than Pydantic models because ``SimFile``
+is not an API boundary — it's private state owned by ``SimulatedFilesystem``.
 
-The ``TOOLS`` dispatch table is populated here with the file-level tools. Two
-entries are intentional ``None`` placeholders:
+The ``TOOLS`` dispatch table is populated here with the file-level tools and
+``run_python`` (wired in Phase 4 to
+:func:`red_button.restricted_python.exec_restricted`). One entry remains an
+intentional ``None`` placeholder:
 
-- ``run_python`` will be wired up in Phase 4 once the AST-whitelisted executor
-  lands in :mod:`red_button.restricted_python` (PROJECT.md Section 7).
 - ``submit_answer`` will be wired up in Phase 7 once the per-episode answer
   recorder exists.
 
@@ -25,6 +25,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from hashlib import sha256
 from typing import Any, Callable
+
+from red_button.restricted_python import exec_restricted
 
 
 @dataclass
@@ -152,14 +154,15 @@ def create_canonical_sandbox(
 #
 # Every tool takes the SimulatedFilesystem as its first argument so the server
 # can bind a per-episode filesystem without relying on module-level state.
-# ``run_python`` (Phase 4 / Section 7) and ``submit_answer`` (Phase 7) are
-# deliberate None placeholders — see module docstring.
+# ``run_python`` is wired to the Phase-4 AST-whitelisted executor
+# (``red_button.restricted_python.exec_restricted``, Section 7).
+# ``submit_answer`` remains a deliberate None placeholder — see module docstring.
 TOOLS: dict[str, Callable[..., Any] | None] = {
     "read_file":     lambda fs, path: fs.read(path),
     "write_file":    lambda fs, path, content: fs.write(path, content),
     "list_files":    lambda fs, directory: fs.list(directory),
     "chmod_file":    lambda fs, path, executable: fs.chmod(path, executable),
     "delete_file":   lambda fs, path: fs.delete(path),
-    "run_python":    None,  # Placeholder — implemented in Phase 4 (Section 7).
+    "run_python":    lambda fs, code: exec_restricted(code, fs),
     "submit_answer": None,  # Placeholder — implemented in Phase 7.
 }
