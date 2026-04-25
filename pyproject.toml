@@ -19,6 +19,7 @@ dependencies = [
     "wandb",
     "datasets",
     "huggingface_hub",
+    "anthropic>=0.40",
 ]
 
 [project.optional-dependencies]

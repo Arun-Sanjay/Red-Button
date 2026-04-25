@@ -24,7 +24,7 @@ Run `pytest tests/ -v` after every phase. Do not proceed if tests fail. If a tes
 If PROJECT.md doesn't cover something, stop and ask the user. Do not invent architecture. Do not guess at reward weights, tool interfaces, or API shapes.
 
 ## Dependencies
-openenv, trl, unsloth, pydantic>=2, fastapi, uvicorn, pytest, pytest-asyncio, wandb, datasets, huggingface_hub. Do not add others without asking.
+openenv-core>=0.2.1, trl, unsloth, pydantic>=2, fastapi, uvicorn, pytest, pytest-asyncio, wandb, datasets, huggingface_hub, anthropic (Phase 11/12 baseline rollout backend). Do not add others without asking.
 
 ## Development setup
 Python 3.14 on Homebrew enforces PEP 668. A venv exists at .venv/ with pytest, pytest-asyncio, and ruff installed. Before running any tests or committing: source .venv/bin/activate. The pre-commit hook depends on this activation.
