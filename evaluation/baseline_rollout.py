@@ -87,6 +87,10 @@ class EpisodeTrace:
     parse_failures: int
     duration_s: float
     backend: str
+    # Token + cost accounting (populated by API-backed backends only).
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost_usd_estimate: float = 0.0
     # Optional error payload when the episode didn't finish cleanly.
     error: Optional[str] = None
 
@@ -101,6 +105,13 @@ class Backend(ABC):
 
     name: str = "base"
 
+    def __init__(self) -> None:
+        # Per-call usage info populated by API-backed backends. The rollout
+        # loop reads this after every ``complete()`` call to drive token + cost
+        # accounting and the per-rollout cost guardrail. Scripted/HF backends
+        # leave this at zero (no API spend).
+        self.last_usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
+
     @abstractmethod
     def complete(
         self, messages: list[dict[str, str]], max_tokens: int, temperature: float
@@ -112,6 +123,34 @@ class Backend(ABC):
 
     def __str__(self) -> str:  # pragma: no cover — trivial
         return self.name
+
+
+# ---------------------------------------------------------------------------
+# Pricing table (USD per 1M tokens) — Phase 11 task spec.
+# ---------------------------------------------------------------------------
+
+PRICING_USD_PER_M_TOKENS: dict[str, dict[str, float]] = {
+    # Anthropic Claude Haiku 4.5 — input $1.00 / output $5.00 per 1M tokens.
+    "claude-haiku-4-5": {"input": 1.0, "output": 5.0},
+}
+
+
+def _cost_for_model(
+    model_id: str, input_tokens: int, output_tokens: int
+) -> float:
+    """Return USD cost estimate for ``input_tokens``/``output_tokens`` on ``model_id``.
+
+    Falls back to Haiku 4.5 pricing if the model id is not in the table — this
+    is conservative for Phase 11 where Haiku is the only API-backed target.
+    """
+    rates = PRICING_USD_PER_M_TOKENS.get(model_id) or PRICING_USD_PER_M_TOKENS[
+        "claude-haiku-4-5"
+    ]
+    return (input_tokens * rates["input"] + output_tokens * rates["output"]) / 1_000_000
+
+
+# Per-rollout hard stop (Phase 11 task spec).
+PER_ROLLOUT_COST_HARD_STOP_USD: float = 0.15
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +171,7 @@ class ScriptedBackend(Backend):
     name = "scripted"
 
     def __init__(self) -> None:
+        super().__init__()
         self._problem_ids: list[int] = []
         self._cursor = 0
         self._read_issued = False
@@ -207,6 +247,7 @@ class HFBackend(Backend):
     name = "hf"
 
     def __init__(self, model_id: str) -> None:
+        super().__init__()
         self.model_id = model_id
         self.name = f"hf:{model_id}"
         self._tokenizer = None
@@ -271,6 +312,7 @@ class OpenAIBackend(Backend):
     name = "openai"
 
     def __init__(self, model_id: str) -> None:
+        super().__init__()
         self.model_id = model_id
         self.name = f"openai:{model_id}"
         self._client = None
@@ -311,6 +353,7 @@ class AnthropicBackend(Backend):
     name = "anthropic"
 
     def __init__(self, model_id: str) -> None:
+        super().__init__()
         self.model_id = model_id
         self.name = f"anthropic:{model_id}"
         self._client = None
@@ -343,13 +386,27 @@ class AnthropicBackend(Backend):
         ]
         system_text = "\n\n".join(system_parts) if system_parts else None
 
-        resp = self._client.messages.create(
-            model=self.model_id,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            system=system_text,
-            messages=user_assistant,  # type: ignore[arg-type]
-        )
+        # Anthropic API requires ``system`` only when present (not as None).
+        create_kwargs: dict[str, Any] = {
+            "model": self.model_id,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": user_assistant,
+        }
+        if system_text is not None:
+            create_kwargs["system"] = system_text
+        resp = self._client.messages.create(**create_kwargs)
+
+        # Surface usage for the rollout loop's accounting + guardrail.
+        usage = getattr(resp, "usage", None)
+        if usage is not None:
+            self.last_usage = {
+                "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
+                "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
+            }
+        else:
+            self.last_usage = {"input_tokens": 0, "output_tokens": 0}
+
         # Concatenate all text blocks.
         parts: list[str] = []
         for block in resp.content:
@@ -524,6 +581,15 @@ def run_episode(
     parse_failures_consecutive = 0
     turn = 0
     last_reward: float = 0.0
+    cumulative_input_tokens = 0
+    cumulative_output_tokens = 0
+    cumulative_cost_usd = 0.0
+    cost_aborted = False
+
+    # Pricing key: AnthropicBackend exposes ``model_id`` (e.g. ``claude-haiku-4-5``).
+    pricing_model_id: Optional[str] = getattr(backend, "model_id", None) if isinstance(
+        backend, AnthropicBackend
+    ) else None
 
     try:
         result = env.reset(tier=tier)
@@ -545,6 +611,33 @@ def run_episode(
                 history, max_tokens=max_tokens, temperature=temperature
             )
             history.append({"role": "assistant", "content": completion})
+
+            # Token + cost accounting (API-backed backends only).
+            usage = getattr(backend, "last_usage", None) or {
+                "input_tokens": 0,
+                "output_tokens": 0,
+            }
+            in_tok = int(usage.get("input_tokens", 0))
+            out_tok = int(usage.get("output_tokens", 0))
+            cumulative_input_tokens += in_tok
+            cumulative_output_tokens += out_tok
+            if pricing_model_id is not None:
+                cumulative_cost_usd = _cost_for_model(
+                    pricing_model_id,
+                    cumulative_input_tokens,
+                    cumulative_output_tokens,
+                )
+                if cumulative_cost_usd > PER_ROLLOUT_COST_HARD_STOP_USD:
+                    logger.error(
+                        "PER-ROLLOUT COST GUARDRAIL TRIPPED: "
+                        "cumulative=$%.4f > hard_stop=$%.2f at turn %d. "
+                        "Aborting rollout.",
+                        cumulative_cost_usd,
+                        PER_ROLLOUT_COST_HARD_STOP_USD,
+                        turn,
+                    )
+                    cost_aborted = True
+                    break
 
             parsed = parse_tool_call(completion)
             if parsed is None:
@@ -598,6 +691,16 @@ def run_episode(
             parse_failures=parse_failures_total,
             duration_s=duration,
             backend=str(backend),
+            input_tokens=cumulative_input_tokens,
+            output_tokens=cumulative_output_tokens,
+            cost_usd_estimate=cumulative_cost_usd,
+            error=(
+                "cost_guardrail_tripped: "
+                f"cumulative_cost=${cumulative_cost_usd:.4f} "
+                f"> hard_stop=${PER_ROLLOUT_COST_HARD_STOP_USD:.2f}"
+                if cost_aborted
+                else None
+            ),
         )
     except Exception as exc:  # noqa: BLE001 — capture every failure
         duration = time.perf_counter() - start
@@ -631,6 +734,9 @@ def run_episode(
             parse_failures=parse_failures_total,
             duration_s=duration,
             backend=str(backend),
+            input_tokens=cumulative_input_tokens,
+            output_tokens=cumulative_output_tokens,
+            cost_usd_estimate=cumulative_cost_usd,
             error=f"{type(exc).__name__}: {exc}",
         )
 
@@ -662,6 +768,9 @@ def aggregate(traces: list[EpisodeTrace]) -> dict[str, Any]:
         (total_parse_failures / total_turns) if total_turns > 0 else 0.0
     )
     mean_duration_s = sum(t.duration_s for t in traces) / n
+    total_input_tokens = sum(t.input_tokens for t in traces)
+    total_output_tokens = sum(t.output_tokens for t in traces)
+    total_cost_usd = sum(t.cost_usd_estimate for t in traces)
     return {
         "n": n,
         "tampering_rate": tampering_rate,
@@ -671,6 +780,10 @@ def aggregate(traces: list[EpisodeTrace]) -> dict[str, Any]:
         "parse_failure_rate": parse_failure_rate,
         "mean_duration_s": mean_duration_s,
         "errors": sum(1 for t in traces if t.error),
+        "total_input_tokens": total_input_tokens,
+        "total_output_tokens": total_output_tokens,
+        "total_cost_usd": total_cost_usd,
+        "mean_cost_usd_per_episode": total_cost_usd / n,
     }
 
 
@@ -685,6 +798,10 @@ def format_summary_table(agg: dict[str, Any]) -> str:
         f"  parse_failure_rate   = {agg['parse_failure_rate'] * 100:.2f}%",
         f"  mean_duration_s      = {agg['mean_duration_s']:.2f}",
         f"  errors               = {agg.get('errors', 0)}",
+        f"  total_cost_usd       = ${agg.get('total_cost_usd', 0.0):.4f}",
+        f"  mean_cost_per_ep_usd = ${agg.get('mean_cost_usd_per_episode', 0.0):.4f}",
+        f"  total_input_tokens   = {agg.get('total_input_tokens', 0)}",
+        f"  total_output_tokens  = {agg.get('total_output_tokens', 0)}",
     ]
     return "\n".join(lines)
 
@@ -798,7 +915,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         (output_dir / fname).write_text(json.dumps(asdict(trace), indent=2))
         logger.info(
             "episode %d done: turns=%d tampering=%s math=%d/10 reward=%.3f "
-            "parse_failures=%d duration=%.2fs%s",
+            "parse_failures=%d duration=%.2fs cost=$%.4f "
+            "(in_tok=%d out_tok=%d)%s",
             i + 1,
             trace.turns,
             trace.tampering_events,
@@ -806,6 +924,9 @@ def main(argv: Optional[list[str]] = None) -> int:
             trace.total_reward,
             trace.parse_failures,
             trace.duration_s,
+            trace.cost_usd_estimate,
+            trace.input_tokens,
+            trace.output_tokens,
             f" error={trace.error}" if trace.error else "",
         )
 
