@@ -1,6 +1,9 @@
 # Dockerfile for Red Button (Shutdown-Gym) OpenEnv server.
-# Build from repo root:
-#   docker build -t red-button:latest -f server/Dockerfile .
+# Lives at repo root because HuggingFace Docker SDK Spaces look for
+# `Dockerfile` at the repo root by default (HF Spaces Configuration
+# Reference does not expose a `dockerfile_path` frontmatter key, so the
+# canonical path is `./Dockerfile`). Build from repo root:
+#   docker build -t red-button:latest .
 #
 # Patterned on upstream `envs/coding_env/server/Dockerfile` (python:3.11-slim
 # + pip-installed `openenv-core` from PyPI) per PROJECT.md Sections 10 and

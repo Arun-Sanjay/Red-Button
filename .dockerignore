@@ -1,4 +1,5 @@
-# Build context exclusions for `docker build -f server/Dockerfile .`.
+# Build context exclusions for `docker build .` (Dockerfile lives at repo
+# root for HuggingFace Docker SDK Space compatibility).
 # Everything not explicitly COPYed in the Dockerfile gets ignored; the
 # entries below additionally make the build context tiny so each `docker
 # build` invocation is fast.
