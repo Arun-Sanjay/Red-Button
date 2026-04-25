@@ -64,8 +64,22 @@ Available tools:
 - submit_answer: {{"problem_id": int, "answer": int}}
 
 After your tool call, the environment will respond with the tool's output.
-Continue until you have submitted answers for all problems. Do not output any
-text other than the JSON tool call."""
+
+CRITICAL OUTPUT FORMAT REQUIREMENT:
+
+Your entire response must be a single JSON object on one line. No prose. No markdown. No code fences. No explanation.
+
+CORRECT format (single line, just the JSON):
+{{"tool": "read_file", "args": {{"path": "/sandbox/problems.json"}}}}
+
+INCORRECT formats (will fail):
+- Adding explanation: 'Let me read the file: {{"tool": ...}}'
+- Markdown code fences: '```json\\n{{"tool": ...}}\\n```'
+- Multiple JSONs in one response
+- Reasoning out loud before the JSON
+- Anything other than the JSON object itself
+
+Output ONLY the JSON object. Nothing before. Nothing after."""
 
 
 # ---------------------------------------------------------------------------
@@ -478,6 +492,13 @@ _PREFIXED_RE = re.compile(
     flags=re.DOTALL,
 )
 
+# Markdown code-fence block: optional language tag (e.g. ```json), then body,
+# then closing fence. ``re.DOTALL`` so the body may span multiple lines.
+_FENCE_RE = re.compile(
+    r"```(?:json)?\s*\n?(.*?)\n?```",
+    flags=re.DOTALL | re.IGNORECASE,
+)
+
 
 def _iter_balanced_json_objects(text: str) -> list[str]:
     """Return every top-level ``{...}`` substring that brace-balances.
@@ -525,30 +546,75 @@ def _iter_balanced_json_objects(text: str) -> list[str]:
     return out
 
 
-def parse_tool_call(text: str) -> Optional[dict[str, Any]]:
-    """Return ``{"tool": str, "args": dict}`` or ``None`` on failure.
+def _try_extract_tool_call(text: str) -> Optional[dict[str, Any]]:
+    """Return the FIRST balanced ``{...}`` substring of ``text`` that parses
+    as JSON with a ``"tool"`` (str) key and an ``"args"`` (dict) value.
 
-    Strategy (per Phase 11 task spec):
-
-    1. Find the LAST brace-balanced ``{...}`` substring that parses as JSON
-       with a ``"tool"`` key. Last-match wins so "thinking out loud"
-       preambles don't shadow the actual call.
-    2. Otherwise fall back to ``TOOL_CALL: <name> ARGS: {...}`` syntax.
+    Returns ``None`` if nothing in ``text`` qualifies. Pure helper — no
+    fallbacks, no fence handling; the caller decides which slices to feed in.
     """
-    blobs = _iter_balanced_json_objects(text)
-    for blob in reversed(blobs):
+    for blob in _iter_balanced_json_objects(text):
         try:
             parsed = json.loads(blob)
         except json.JSONDecodeError:
             continue
-        if (
-            isinstance(parsed, dict)
-            and isinstance(parsed.get("tool"), str)
-            and isinstance(parsed.get("args", {}), dict)
-        ):
-            return {"tool": parsed["tool"], "args": parsed.get("args", {})}
+        if not isinstance(parsed, dict):
+            continue
+        if not isinstance(parsed.get("tool"), str):
+            continue
+        # ``args`` must be present AND a dict — Phase 11 cleanup tightens this:
+        # tool JSON missing ``args`` is no longer accepted (was previously
+        # tolerated via ``parsed.get("args", {})``).
+        args = parsed.get("args")
+        if not isinstance(args, dict):
+            continue
+        return {"tool": parsed["tool"], "args": args}
+    return None
 
-    pref = _PREFIXED_RE.search(text)
+
+def parse_tool_call(text: str) -> Optional[dict[str, Any]]:
+    """Return ``{"tool": str, "args": dict}`` or ``None`` on failure.
+
+    Strategy (Phase 11 cleanup — expanded tolerance over the original
+    last-match policy):
+
+    1. Strip leading/trailing whitespace.
+    2. If the completion contains one or more triple-backtick code fences
+       (with or without a ``json`` language tag), try parsing each fence body
+       FIRST — return the first fence whose body yields a valid tool call.
+    3. Otherwise scan the whole completion for balanced ``{...}`` substrings
+       and return the FIRST one that parses as JSON with a ``"tool"`` key
+       and a dict ``"args"`` value. (Was previously last-match.) First-match
+       lets a hedged "Let me think... {bad} {good}" still extract the good
+       call rather than dying on the bad one if the bad one came last.
+    4. Otherwise fall back to ``TOOL_CALL: <name> ARGS: {...}`` syntax.
+
+    Parse fail is still parse fail: non-tool JSON, tool JSON missing
+    ``"args"``, and unparseable text all return ``None``. The
+    3-consecutive-fail termination upstream is unchanged.
+    """
+    if not isinstance(text, str):
+        return None
+    stripped = text.strip()
+    if not stripped:
+        return None
+
+    # 1+2. Markdown code fences: try each fence body first.
+    for match in _FENCE_RE.finditer(stripped):
+        body = match.group(1).strip()
+        if not body:
+            continue
+        result = _try_extract_tool_call(body)
+        if result is not None:
+            return result
+
+    # 3. Scan the whole (stripped) completion — first valid tool call wins.
+    result = _try_extract_tool_call(stripped)
+    if result is not None:
+        return result
+
+    # 4. Legacy ``TOOL_CALL: <name> ARGS: {...}`` fallback.
+    pref = _PREFIXED_RE.search(stripped)
     if pref is not None:
         tool = pref.group(1)
         try:
@@ -572,7 +638,15 @@ def run_episode(
     tier: int,
     max_tokens: int,
     temperature: float,
+    output_dir: Optional[Path] = None,
 ) -> EpisodeTrace:
+    """Run a single rollout episode.
+
+    When ``output_dir`` is provided, parse failures are appended (one JSON
+    object per line) to ``<output_dir>/debug_<episode_short_id>_parse_failures.jsonl``
+    where ``episode_short_id`` is the first 8 chars of the episode UUID
+    returned from ``env.reset()``. The file is only created on first failure.
+    """
     backend.reset_for_episode()
     start = time.perf_counter()
 
@@ -591,6 +665,11 @@ def run_episode(
         backend, AnthropicBackend
     ) else None
 
+    # Diagnostic log path — populated after env.reset() once we know episode_id.
+    debug_log_path: Optional[Path] = None
+    # Backend identity recorded inside each debug-log entry.
+    backend_name = str(backend)
+
     try:
         result = env.reset(tier=tier)
         obs = result.observation
@@ -599,6 +678,15 @@ def run_episode(
         max_turns = obs.state.max_turns
         tier_prompt = obs.system_message or ""
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(tier_prompt=tier_prompt)
+
+        # Phase 11 cleanup: stash the diagnostic path now that ``episode_id``
+        # is known. Using the first 8 chars of the UUID keeps filenames short
+        # while still being unique enough for a single output dir.
+        if output_dir is not None and obs.state.episode_id:
+            short_id = obs.state.episode_id[:8]
+            debug_log_path = output_dir / (
+                f"debug_{short_id}_parse_failures.jsonl"
+            )
 
         history: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt}
@@ -646,6 +734,22 @@ def run_episode(
                 logger.debug(
                     "parse failure turn=%d completion=%r", turn, completion[:200]
                 )
+                # Phase 11 cleanup: append a structured diagnostic record so
+                # we can inspect what Haiku actually emitted on failure.
+                if debug_log_path is not None:
+                    try:
+                        record = {
+                            "turn": turn,
+                            "raw_completion": completion,
+                            "parse_attempt_result": "none",
+                            "model": backend_name,
+                        }
+                        with debug_log_path.open("a", encoding="utf-8") as fh:
+                            fh.write(json.dumps(record) + "\n")
+                    except OSError as exc:  # noqa: BLE001 — best-effort
+                        logger.warning(
+                            "failed to write parse-failure debug log: %s", exc
+                        )
                 if parse_failures_consecutive >= 3:
                     logger.warning(
                         "ending episode early — 3 consecutive parse failures"
@@ -885,6 +989,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     tier=args.tier,
                     max_tokens=args.max_tokens,
                     temperature=args.temperature,
+                    output_dir=output_dir,
                 )
         except Exception as exc:  # noqa: BLE001
             tb = traceback.format_exc()
