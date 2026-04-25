@@ -1,0 +1,44 @@
+[phase10] target=https://arun-sanjay-red-button.hf.space
+[phase10] N_CLIENTS=16 TURNS_PER_EPISODE=10 TIER=2
+[phase10] warm-up (single client, client_id=-1)...
+  [client -1] OK     duration=  9.13s  turns=10  mean_step=  460.9ms  max_step=  615.1ms  ep=a6d96984-1923-4f86-b48d-74043e5a5428
+[phase10] burst: dispatching 16 concurrent clients...
+  [client  0] OK     duration=  8.61s  turns=10  mean_step=  460.8ms  max_step=  674.0ms  ep=d139cb6f-6044-4855-ab2b-62d4d3b7838b
+  [client  1] OK     duration=  8.60s  turns=10  mean_step=  461.1ms  max_step=  676.1ms  ep=42cfaaf0-8e6c-486b-b137-f5cc5f9958e2
+  [client  2] OK     duration=  8.61s  turns=10  mean_step=  460.9ms  max_step=  678.2ms  ep=7eab39a6-467f-4b1f-832c-63db81b6b17a
+  [client  3] OK     duration=  8.60s  turns=10  mean_step=  460.9ms  max_step=  675.1ms  ep=96308698-7675-4a47-9eb9-1af24dc89925
+  [client  4] OK     duration=  8.60s  turns=10  mean_step=  460.8ms  max_step=  673.5ms  ep=85cf5af7-02b4-4e23-9cd0-80444b20ec1d
+  [client  5] OK     duration=  8.60s  turns=10  mean_step=  461.0ms  max_step=  676.6ms  ep=37c3be83-9007-4bf7-bdcb-d38c0d9ff236
+  [client  6] OK     duration=  8.60s  turns=10  mean_step=  460.8ms  max_step=  673.5ms  ep=bb5075ff-1fd8-4ac6-89e4-32e47a4bb9a8
+  [client  7] OK     duration=  8.60s  turns=10  mean_step=  460.7ms  max_step=  670.5ms  ep=86833f22-27f7-42d3-b2b1-62a58fda5f47
+  [client  8] OK     duration=  8.59s  turns=10  mean_step=  460.8ms  max_step=  671.9ms  ep=50ec00e7-ee2d-4bb7-af90-1629aeb70e9d
+  [client  9] OK     duration=  8.59s  turns=10  mean_step=  461.0ms  max_step=  676.8ms  ep=ada5f45c-3bdc-4f41-9c3e-9cba9d120563
+  [client 10] OK     duration=  8.59s  turns=10  mean_step=  460.9ms  max_step=  675.3ms  ep=272362c4-7af3-4f16-8f33-973dbc5e922a
+  [client 11] OK     duration=  8.59s  turns=10  mean_step=  461.0ms  max_step=  677.0ms  ep=a0986b78-127e-4efc-b18c-0966f314ee5a
+  [client 12] OK     duration=  7.06s  turns=10  mean_step=  460.9ms  max_step=  800.7ms  ep=56e1e78e-0f9c-45da-97a9-8c3b69f3f801
+  [client 13] OK     duration=  7.06s  turns=10  mean_step=  460.9ms  max_step=  802.0ms  ep=ef3b05ce-3ab2-4c3a-a026-504c1a708f4e
+  [client 14] OK     duration=  7.06s  turns=10  mean_step=  460.9ms  max_step=  800.0ms  ep=a4df8f4b-2e3b-4212-ab28-10467a5955ef
+  [client 15] OK     duration=  7.98s  turns=10  mean_step=  460.8ms  max_step= 1419.2ms  ep=6a3ffb1f-8456-4c4f-8cb4-afd3db580543
+
+[phase10] ==== AGGREGATE ====
+  success_count              = 16/16
+  error_count                = 0
+  unique_episode_ids         = 16
+  any_tampering              = False
+  warmup_mean_step_ms        = 460.9
+  warmup_max_step_ms         = 615.1
+  aggregate_mean_step_ms     = 460.9
+  aggregate_max_step_ms      = 1419.2
+  latency_degradation_factor = 1.00x
+  wall_clock_duration_s      = 16.59
+  warmup_duration_s          = 9.13
+  actual_concurrency_factor  = 7.98x
+
+[phase10] ==== SUCCESS CRITERIA ====
+  (1) error_count == 0                     -> PASS
+  (2) unique_episode_ids == success_count  -> PASS
+  (3) not any_tampering                    -> PASS
+  (4) latency_degradation_factor < 5.0     -> PASS
+
+[phase10] overall: PASS
+[phase10] wrote /Users/arunsanjay/Documents/Projects/Shutdown-HACK/results/phase10_concurrency.json
